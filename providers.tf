@@ -14,6 +14,7 @@ terraform {
     }
 }
 
+
 provider "google" {
   project = "leafy-glyph-477712-p3"
   region  = "us-central1"
@@ -40,4 +41,5 @@ resource "google_project_service" "api_services" {
 # SA
 # WIF
 # LINK SA
+
 
