@@ -20,6 +20,7 @@ provider "google" {
   zone    = "us-central1-a"
 }
 
+
 resource "google_project_service" "api_services" {
   for_each = toset([
     "compute.googleapis.com",
@@ -39,3 +40,4 @@ resource "google_project_service" "api_services" {
 # SA
 # WIF
 # LINK SA
+
