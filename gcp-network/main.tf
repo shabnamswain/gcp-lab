@@ -53,6 +53,7 @@ resource "google_compute_network" "vpc" {
   auto_create_subnetworks = false
 }
 
+
 # resource "google_compute_subnetwork" "subnet_function" {
 #   name          = var.subnet_fcn_name
 #   ip_cidr_range = var.fcn_ip_cidr_range

@@ -1,4 +1,4 @@
-# project_id = "leafy-glyph-477712-p3"
+project_id = "leafy-glyph-477712-p3"
 region     = "us-central1"
 # zone       = "us-central1-a"  
 # stg_buck_name = "csv-upload-bucket-shab1"
