@@ -1,8 +1,8 @@
 
-name: 'Terraform'
+name: Terraform (Network → Compute)
 
 on:
-  workflow_dispatch:   # Allows manual trigger for destroy
+  workflow_dispatch:               
   push:
     branches: [ "main" ]
   pull_request:
@@ -10,20 +10,28 @@ on:
 permissions:
   contents: read
 
+env:
+  TF_VERSION: "1.6.6"
+
 jobs:
-  terraform_plan:
-    name: 'Terraform Plan'
+  # =========================
+  # NETWORK (Plan → Apply)
+  # =========================
+  network_plan:
+    name: Network - Plan
     runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
-        working-directory: .
+        working-directory: gcp-network
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v1
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
 
       - name: Setup terraform variables
         run: |
@@ -37,60 +45,125 @@ jobs:
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
 
+      - name: Terraform Validate
+        run: terraform validate
+
       - name: Terraform Plan
-        run: terraform plan -input=false
+        run: terraform plan -input=false -out=tfplan
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
 
-  terraform_apply:
-    name: 'Terraform Apply'
+  network_apply:
+    name: Network - Apply
     runs-on: ubuntu-latest
-    needs: terraform_plan
-    environment: test   # Manual approval required
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [network_plan]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    environment: prod
     defaults:
       run:
         shell: bash
-        working-directory: .
+        working-directory: gcp-network
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v1
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
 
       - name: Terraform Init
         run: terraform init
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+      # Re-plan inside the Apply job so tfplan exists here
+      - name: Terraform Plan
+        run: terraform plan -input=false -out=tfplan
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve -input=false
+        run: terraform apply -input=false -auto-approve tfplan
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
 
-  terraform_destroy:
-    name: 'Terraform Destroy'
+  # =========================
+  # COMPUTE (Plan → Apply)
+  # runs after Network Apply
+  # =========================
+  compute_plan:
+    name: Compute - Plan
     runs-on: ubuntu-latest
-    needs: terraform_apply
-    environment: test   # Manual approval required
+    needs: [network_apply]         # ensures network goes first
     defaults:
       run:
         shell: bash
-        working-directory: .
+        working-directory: gcp-compute
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v1
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Setup terraform variables
+        run: |
+          cat > pipeline.auto.tfvars <<EOF
+          region="${{ vars.GCP_REGION }}"
+          project="${{ vars.GCP_PROJECT }}"
+          vm_name="${{ vars.VM_NAME }}"
+          image="${{ vars.VM_IMAGE }}"
+          machine_type="${{ vars.MACHINE_TYPE }}"
+          zone="${{ vars.GCP_ZONE }}"
+          EOF
 
       - name: Terraform Init
         run: terraform init
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
 
-      - name: Terraform Destroy
-        run: terraform destroy -auto-approve -input=false
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -input=false -out=tfplan
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+  compute_apply:
+    name: Compute - Apply
+    runs-on: ubuntu-latest
+    needs: [compute_plan]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    environment: prod
+    defaults:
+      run:
+        shell: bash
+        working-directory: gcp-compute
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+      # Re-plan inside the Apply job so tfplan exists here
+      - name: Terraform Plan
+        run: terraform plan -input=false -out=tfplan
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS}}
+
+      - name: Terraform Apply
+        run: terraform apply -input=false -auto-approve tfplan
+        env:
+         GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
