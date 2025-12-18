@@ -1,0 +1,31 @@
+
+# === Terraform ===
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.tfvars.json
+.terraform/
+.terraform.lock.hcl
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# === Sensitive files ===
+# Service account keys (never commit!)
+*.json
+
+# === Local environment files ===
+.env
+*.env
+
+# === Editor/OS files ===
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# === GitHub Actions ===
+# Ignore workflow runs artifacts if any# Ignore workflow runs artifacts if any
