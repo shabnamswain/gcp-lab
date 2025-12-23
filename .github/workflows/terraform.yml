@@ -11,9 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        layer: [01_gcp-network, 02_gcp-compute]
-        max-parallel: 1
- 
+        layer: [01_gcp-network, 02_gcp-compute]   
+      max-parallel: 1
+      fail-fast: false
     defaults:
       run:
         shell: bash
