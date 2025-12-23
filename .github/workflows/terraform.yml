@@ -37,7 +37,8 @@ jobs:
       # 4 Configure backend (GCS)
       - name: Terraform Init
         working-directory: ${{ matrix.layer }}
-        run: terraform init -backend-config="bucket=${{ secrets.GCS_BUCKET }}" -reconfigure
+        run: terraform init
+        # run: terraform init -backend-config="bucket=${{ secrets.GCS_BUCKET }}" -reconfigure
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
 
