@@ -50,7 +50,7 @@ jobs:
       # 6 Terraform Plan
       - name: Terraform Plan
         working-directory: ${{ matrix.layer }}
-        run: terraform plan -out=tfplan -input=false
+        run: terraform plan -input=false -out=tfplan
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
 
@@ -59,7 +59,7 @@ jobs:
       - name: Terraform Apply
         working-directory: ${{ matrix.layer }}
         if: github.ref == 'refs/heads/main'
-        run: terraform apply -input=false tfplan
+        run: terraform apply -input=false -auto-approve tfplan
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
           
