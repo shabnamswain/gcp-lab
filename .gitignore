@@ -2,7 +2,7 @@
 # === Terraform ===
 *.tfstate
 *.tfstate.backup
-*.tfvars
+# *.tfvars
 *.tfvars.json
 .terraform/
 .terraform.lock.hcl
