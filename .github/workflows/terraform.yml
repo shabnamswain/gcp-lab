@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        layer: [01_gcp-compute, 02_gcp-network]
+        layer: [01_gcp-network, 02_gcp-compute]
  
     defaults:
       run:
