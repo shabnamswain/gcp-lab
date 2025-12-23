@@ -12,6 +12,7 @@ jobs:
     strategy:
       matrix:
         layer: [01_gcp-network, 02_gcp-compute]
+        max-parallel: 1
  
     defaults:
       run:
