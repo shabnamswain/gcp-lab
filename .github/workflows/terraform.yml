@@ -1,148 +1,65 @@
-
-name: Terraform (Network → Compute)
-
+name: Terraform Per-Layer
+ 
 on:
-  workflow_dispatch:               
   push:
-    branches: [ "main" ]
-  pull_request:
-
-env:
-  TF_VERSION: "1.6.6"
-
+    branches:
+      - main
+  workflow_dispatch:
+ 
 jobs:
-  # =========================
-  # NETWORK (Plan → Apply)
-  # =========================
-  network_plan:
-    name: Network - Plan
+  terraform:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        layer: [01_gcp-compute, 02_gcp-network]
+ 
     defaults:
       run:
         shell: bash
-        working-directory: gcp-network
+ 
     steps:
+      # 1 Checkout code
       - name: Checkout
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@v3
+ 
+      # 2 Set up Terraform
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: ${{ env.TF_VERSION }}
-
+          terraform_version: 1.7.0
+ 
+      # 3 Authenticate GCP
+      # - name: Setup GCP Credentials
+      #   uses: google-github-actions/auth@v1
+      #   with:
+      #     credentials_json: ${{ secrets.GCP_SA_KEY }}
+ 
+      # 4 Configure backend (GCS)
       - name: Terraform Init
-        run: terraform init
+        working-directory: ${{ matrix.layer }}
+        run: terraform init -backend-config="bucket=${{ secrets.GCS_BUCKET }}" -reconfigure
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
 
+      # 5 Terraform Validate
       - name: Terraform Validate
+        working-directory: ${{ matrix.layer }}
         run: terraform validate
-
+ 
+      # 6 Terraform Plan
       - name: Terraform Plan
-        run: terraform plan -input=false -out=tfplan
+        working-directory: ${{ matrix.layer }}
+        run: terraform plan -out=tfplan -input=false
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
 
-  network_apply:
-    name: Network - Apply
-    runs-on: ubuntu-latest
-    needs: [network_plan]
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    environment: uat
-    defaults:
-      run:
-        shell: bash
-        working-directory: gcp-network
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Terraform Init
-        run: terraform init
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
-
-      # Re-plan inside the Apply job so tfplan exists here
-      - name: Terraform Plan
-        run: terraform plan -input=false -out=tfplan
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
-
+ 
+      # 7 Terraform Apply
       - name: Terraform Apply
-        run: terraform apply -input=false -auto-approve tfplan
+        working-directory: ${{ matrix.layer }}
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -input=false tfplan
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
 
-  # =========================
-  # COMPUTE (Plan → Apply)
-  # runs after Network Apply
-  # =========================
-  compute_plan:
-    name: Compute - Plan
-    runs-on: ubuntu-latest
-    needs: [network_apply]         # ensures network goes first
-    defaults:
-      run:
-        shell: bash
-        working-directory: gcp-compute
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Terraform Init
-        run: terraform init
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
-
-      - name: Terraform Validate
-        run: terraform validate
-
-      - name: Terraform Plan
-        run: terraform plan -input=false -out=tfplan
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
-
-  compute_apply:
-    name: Compute - Apply
-    runs-on: ubuntu-latest
-    needs: [compute_plan]
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    environment: uat
-    defaults:
-      run:
-        shell: bash
-        working-directory: gcp-compute
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Terraform Init
-        run: terraform init
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
-
-      # Re-plan inside the Apply job so tfplan exists here
-      - name: Terraform Plan
-        run: terraform plan -input=false -out=tfplan
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS}}
-
-      - name: Terraform Apply
-        run: terraform apply -input=false -auto-approve tfplan
-        env:
-         GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+ 
