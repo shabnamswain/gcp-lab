@@ -5,7 +5,25 @@ on:
     branches:
       - main
   workflow_dispatch:
- 
+    inputs:
+      layer:
+        description: "Which layer to run"
+        type: choice
+        required: true
+        options:
+          - both
+          - 01_gcp-network
+          - 02_gcp-compute
+        default: both
+      action:
+        description: "Terraform action to perform"
+        type: choice
+        required: true
+        options:
+          - plan
+          - apply
+        default: plan
+
 jobs:
   terraform:
     runs-on: ubuntu-latest
