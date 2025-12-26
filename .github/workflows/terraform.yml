@@ -20,6 +20,7 @@ on:
         type: choice
         required: true
         options:
+          - both
           - plan
           - apply
         default: plan
